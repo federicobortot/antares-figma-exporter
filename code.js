@@ -108,21 +108,21 @@ async function buildJson(collectionId, modeId) {
     const rawValue = variable.valuesByMode[modeId];
     if (rawValue === undefined) continue;
 
-    const type = resolvedTypeToTokenType(variable.resolvedType);
+    const $type = resolvedTypeToTokenType(variable.resolvedType);
 
-    let value;
+    let $value;
     if (isVariableAlias(rawValue)) {
       // Alias → emit a {dot.separated.path} reference pointing to the
       // referenced variable's full name (with / → .)
       const refVar = variableMap.get(rawValue.id);
-      value = refVar
+      $value = refVar
         ? `{${refVar.name.replace(/\//g, '.')}}`
         : `{unknown}`;
     } else {
-      value = formatValue(variable.resolvedType, rawValue);
+      $value = formatValue(variable.resolvedType, rawValue);
     }
 
-    setNestedValue(result, path, { type, value });
+    setNestedValue(result, path, { $type, $value });
   }
 
   return result;
