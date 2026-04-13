@@ -293,7 +293,7 @@
 
       // One row per mode
       for (const mode of col.modes) {
-        const suggested = suggestFilename(col.name, mode.name);
+        const suggested = suggestFilename(col.name, mode.name, col.modes.length);
 
         const row = document.createElement('div');
         row.className = 'mode-row';
@@ -326,23 +326,17 @@
 
     /**
      * Propose a filename from the collection + mode names.
-     * Examples:
-     *   "Primitives" + "Value"       → "primitives.json"
-     *   "Mode"       + "Light"       → "mode.light.json"
-     *   "Brand"      + "Sisal"       → "brand.sisal.json"
-     *   "Component"  + "Value"       → "component.json"
+     * If the collection has a single mode → "collection.json"
+     * If the collection has multiple modes → "collection.mode.json"
      */
-    function suggestFilename(colName, modeName) {
+    function suggestFilename(colName, modeName, modeCount) {
       const normalize = (s) =>
         s.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
       const col  = normalize(colName);
       const mode = normalize(modeName);
 
-      // Skip the mode suffix when it's a "default" placeholder name
-      const ignoredModes = new Set(['value', 'default', 'values', 'default-value', 'mode', col]);
-
-      if (ignoredModes.has(mode)) {
+      if (modeCount === 1) {
         return `${col}.json`;
       }
       return `${col}.${mode}.json`;
