@@ -35,6 +35,7 @@ figma.ui.onmessage = async (msg) => {
               collectionName: collection.name,
               modeId: mode.modeId,
               modeName: mode.name,
+              modeCount: collection.modes.length,
               json,
             });
           }
@@ -66,7 +67,7 @@ async function sendCollections() {
   const collections = await figma.variables.getLocalVariableCollectionsAsync();
 
   if (collections.length === 0) {
-    figma.ui.postMessage({ type: 'COLLECTIONS', data: [] });
+    figma.ui.postMessage({ type: 'COLLECTIONS', data: [], fileName: figma.root.name });
     return;
   }
 
@@ -77,7 +78,7 @@ async function sendCollections() {
     variableCount: col.variableIds.length,
   }));
 
-  figma.ui.postMessage({ type: 'COLLECTIONS', data });
+  figma.ui.postMessage({ type: 'COLLECTIONS', data, fileName: figma.root.name });
 }
 
 // ─── JSON builder ───────────────────────────────────────────────────────────────

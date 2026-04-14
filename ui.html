@@ -221,6 +221,9 @@
     /** @type {Array<{collectionId, modeId, filename}>} */
     let pendingDownloads = [];
 
+    /** @type {string} Name of the Figma file, used for ZIP naming */
+    let figmaFileName = 'tokens';
+
     // ── Init ───────────────────────────────────────────────────────────────────
 
     window.onmessage = (event) => {
@@ -229,6 +232,7 @@
 
       switch (msg.type) {
         case 'COLLECTIONS':
+          figmaFileName = msg.fileName || 'tokens';
           renderCollections(msg.data);
           break;
 
@@ -408,7 +412,7 @@
 
       const files = results.map((r) => ({
         name: map[`${r.collectionId}::${r.modeId}`]
-          || suggestFilename(r.collectionName, r.modeName),
+          || suggestFilename(r.collectionName, r.modeName, r.modeCount),
         content: JSON.stringify(r.json, null, 2),
       }));
 
@@ -416,8 +420,7 @@
 
       const zipBytes = createZip(files);
       const blob = new Blob([zipBytes], { type: 'application/zip' });
-      const timestamp = new Date().toISOString().slice(0, 10);
-      downloadBlob(blob, `antares-tokens-${timestamp}.zip`);
+      downloadBlob(blob, normalizeZipName(figmaFileName) + '.zip');
 
       hideProgress();
       document.getElementById('btn-download-all').disabled = false;
@@ -425,10 +428,15 @@
 
     // ── Download helpers ───────────────────────────────────────────────────────
 
+    function normalizeZipName(s) {
+      return s.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'tokens';
+    }
+
     function downloadJson(json, filename) {
-      const jsonStr = JSON.stringify(json, null, 2);
-      const blob    = new Blob([jsonStr], { type: 'application/json' });
-      downloadBlob(blob, filename);
+      const jsonStr  = JSON.stringify(json, null, 2);
+      const zipBytes = createZip([{ name: filename, content: jsonStr }]);
+      const blob     = new Blob([zipBytes], { type: 'application/zip' });
+      downloadBlob(blob, normalizeZipName(figmaFileName) + '.zip');
     }
 
     function downloadBlob(blob, filename) {
