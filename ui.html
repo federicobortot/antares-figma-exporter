@@ -92,7 +92,7 @@
     /* ── Mode row ─────────────────────────────────────────── */
     .mode-row {
       display: grid;
-      grid-template-columns: auto 1fr auto;
+      grid-template-columns: auto auto 1fr auto;
       align-items: center;
       gap: 8px;
       padding: 8px 12px;
@@ -178,6 +178,17 @@
       display: none;
     }
     .progress.visible { display: block; }
+
+    /* ── Checkboxes ──────────────────────────────────────── */
+    .collection-checkbox,
+    .mode-checkbox {
+      width: 14px;
+      height: 14px;
+      cursor: pointer;
+      accent-color: #18a0fb;
+      flex-shrink: 0;
+      margin: 0;
+    }
 
     /* ── Spinner ─────────────────────────────────────────── */
     .spinner {
@@ -286,16 +297,29 @@
       card.className = 'collection';
       card.dataset.collectionId = col.id;
 
-      // Header
+      // ── Header ────────────────────────────────────────────
       const header = document.createElement('div');
       header.className = 'collection-header';
-      header.innerHTML = `
-        <span class="collection-name">${escHtml(col.name)}</span>
-        <span class="badge">${col.variableCount} variabili</span>
-      `;
+
+      const colCheckbox = document.createElement('input');
+      colCheckbox.type = 'checkbox';
+      colCheckbox.className = 'collection-checkbox';
+      colCheckbox.checked = true;
+      header.appendChild(colCheckbox);
+
+      const colName = document.createElement('span');
+      colName.className = 'collection-name';
+      colName.textContent = col.name;
+      header.appendChild(colName);
+
+      const badge = document.createElement('span');
+      badge.className = 'badge';
+      badge.textContent = `${col.variableCount} variabili`;
+      header.appendChild(badge);
+
       card.appendChild(header);
 
-      // One row per mode
+      // ── Mode rows ─────────────────────────────────────────
       for (const mode of col.modes) {
         const suggested = suggestFilename(col.name, mode.name, col.modes.length);
 
@@ -303,27 +327,83 @@
         row.className = 'mode-row';
         row.dataset.modeId = mode.modeId;
 
-        row.innerHTML = `
-          <span class="mode-label">${escHtml(mode.name)}</span>
-          <input
-            type="text"
-            class="filename-input"
-            value="${escHtml(suggested)}"
-            spellcheck="false"
-          />
-          <button class="btn btn-ghost" data-action="export-one">↓</button>
-        `;
+        const modeCheckbox = document.createElement('input');
+        modeCheckbox.type = 'checkbox';
+        modeCheckbox.className = 'mode-checkbox';
+        modeCheckbox.checked = true;
+        row.appendChild(modeCheckbox);
 
-        // Individual export button
-        row.querySelector('[data-action="export-one"]').addEventListener('click', () => {
-          const filename = row.querySelector('.filename-input').value.trim() || suggested;
+        const modeLabel = document.createElement('span');
+        modeLabel.className = 'mode-label';
+        modeLabel.textContent = mode.name;
+        row.appendChild(modeLabel);
+
+        const filenameInput = document.createElement('input');
+        filenameInput.type = 'text';
+        filenameInput.className = 'filename-input';
+        filenameInput.value = suggested;
+        filenameInput.spellcheck = false;
+        row.appendChild(filenameInput);
+
+        const exportBtn = document.createElement('button');
+        exportBtn.className = 'btn btn-ghost';
+        exportBtn.dataset.action = 'export-one';
+        exportBtn.textContent = '↓';
+        exportBtn.addEventListener('click', () => {
+          const filename = filenameInput.value.trim() || suggested;
           requestExport(col.id, mode.modeId, filename, row);
         });
+        row.appendChild(exportBtn);
 
         card.appendChild(row);
       }
 
+      // ── Checkbox wiring ───────────────────────────────────
+      // Collection → all modes
+      colCheckbox.addEventListener('change', () => {
+        card.querySelectorAll('.mode-checkbox').forEach((cb) => {
+          cb.checked = colCheckbox.checked;
+        });
+        updateDownloadAllButton();
+      });
+
+      // Each mode → update collection state
+      card.querySelectorAll('.mode-checkbox').forEach((cb) => {
+        cb.addEventListener('change', () => {
+          updateCollectionCheckbox(card);
+          updateDownloadAllButton();
+        });
+      });
+
       return card;
+    }
+
+    // ── Checkbox helpers ───────────────────────────────────────────────────────
+
+    /**
+     * Sync the collection-level checkbox with the state of its mode checkboxes.
+     * all checked → checked, none checked → unchecked, mixed → indeterminate.
+     */
+    function updateCollectionCheckbox(card) {
+      const modeCbs = [...card.querySelectorAll('.mode-checkbox')];
+      const colCb   = card.querySelector('.collection-checkbox');
+      const n = modeCbs.filter((cb) => cb.checked).length;
+      if (n === 0) {
+        colCb.checked = false;
+        colCb.indeterminate = false;
+      } else if (n === modeCbs.length) {
+        colCb.checked = true;
+        colCb.indeterminate = false;
+      } else {
+        colCb.checked = false;
+        colCb.indeterminate = true;
+      }
+    }
+
+    /** Enable "Scarica tutti" only when at least one mode is checked. */
+    function updateDownloadAllButton() {
+      const anyChecked = document.querySelectorAll('.mode-checkbox:checked').length > 0;
+      document.getElementById('btn-download-all').disabled = !anyChecked;
     }
 
     // ── Filename suggestion ────────────────────────────────────────────────────
@@ -388,15 +468,24 @@
     // ── Export – all ───────────────────────────────────────────────────────────
 
     document.getElementById('btn-download-all').addEventListener('click', () => {
-      // Collect all filename inputs into a lookup map
+      // Collect only checked mode rows
       const filenameMap = {};
+      const selections  = [];
+
       document.querySelectorAll('.mode-row').forEach((row) => {
-        const card = row.closest('.collection');
-        const colId  = card.dataset.collectionId;
-        const modeId = row.dataset.modeId;
+        const modeCb = row.querySelector('.mode-checkbox');
+        if (!modeCb || !modeCb.checked) return;
+
+        const card     = row.closest('.collection');
+        const colId    = card.dataset.collectionId;
+        const modeId   = row.dataset.modeId;
         const filename = row.querySelector('.filename-input').value.trim() || `export.json`;
+
         filenameMap[`${colId}::${modeId}`] = filename;
+        selections.push({ collectionId: colId, modeId });
       });
+
+      if (selections.length === 0) return;
 
       // Save for later use
       window._filenameMap = filenameMap;
@@ -404,7 +493,7 @@
       document.getElementById('btn-download-all').disabled = true;
       showProgress('Raccolta dati…');
 
-      parent.postMessage({ pluginMessage: { type: 'EXPORT_ALL' } }, '*');
+      parent.postMessage({ pluginMessage: { type: 'EXPORT_ALL', selections } }, '*');
     });
 
     function handleExportAllData(results) {

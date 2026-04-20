@@ -25,10 +25,19 @@ figma.ui.onmessage = async (msg) => {
 
     case 'EXPORT_ALL': {
       try {
+        const { selections } = msg; // Array<{collectionId, modeId}> | undefined
         const collections = await figma.variables.getLocalVariableCollectionsAsync();
         const results = [];
         for (const collection of collections) {
           for (const mode of collection.modes) {
+            // Skip pairs not in the selections list (if one was provided)
+            if (
+              selections &&
+              !selections.some(
+                (s) => s.collectionId === collection.id && s.modeId === mode.modeId
+              )
+            ) continue;
+
             const json = await buildJson(collection.id, mode.modeId);
             results.push({
               collectionId: collection.id,
