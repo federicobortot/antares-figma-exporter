@@ -182,12 +182,50 @@
     /* ── Checkboxes ──────────────────────────────────────── */
     .collection-checkbox,
     .mode-checkbox {
+      appearance: none;
+      -webkit-appearance: none;
       width: 14px;
       height: 14px;
+      border: 1.5px solid #b0b0b0;
+      border-radius: 3px;
+      background: #fff;
       cursor: pointer;
-      accent-color: #18a0fb;
       flex-shrink: 0;
       margin: 0;
+      position: relative;
+      transition: background 0.1s, border-color 0.1s;
+    }
+    .collection-checkbox:checked,
+    .mode-checkbox:checked {
+      background: #18a0fb;
+      border-color: #18a0fb;
+    }
+    .collection-checkbox:indeterminate {
+      background: #18a0fb;
+      border-color: #18a0fb;
+    }
+    .collection-checkbox:checked::after,
+    .mode-checkbox:checked::after {
+      content: '';
+      position: absolute;
+      left: 3px;
+      top: 1px;
+      width: 5px;
+      height: 8px;
+      border: 2px solid #fff;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg);
+    }
+    .collection-checkbox:indeterminate::after {
+      content: '';
+      position: absolute;
+      left: 2px;
+      top: 5px;
+      width: 8px;
+      height: 2px;
+      background: #fff;
+      border-radius: 1px;
     }
 
     /* ── Spinner ─────────────────────────────────────────── */
