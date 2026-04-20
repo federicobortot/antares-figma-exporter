@@ -179,6 +179,40 @@
     }
     .progress.visible { display: block; }
 
+    /* ── Toolbar (select all) ───────────────────────────── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px 6px;
+      border-bottom: 1px solid #e6e6e6;
+      flex-shrink: 0;
+      font-size: 11px;
+      color: #555;
+    }
+
+    /* ── Caret ───────────────────────────────────────────── */
+    .caret-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0 3px;
+      color: #888;
+      font-size: 10px;
+      line-height: 1;
+      transition: transform 0.15s;
+      flex-shrink: 0;
+    }
+    .collection.collapsed > .collection-header {
+      border-bottom: none;
+    }
+    .collection.collapsed .caret-btn {
+      transform: rotate(-90deg);
+    }
+    .collection-body.hidden {
+      display: none;
+    }
+
     /* ── Checkboxes ──────────────────────────────────────── */
     .collection-checkbox,
     .mode-checkbox {
@@ -248,6 +282,11 @@
     <p>Esporta le collezioni Figma come JSON compatibili con <code>build.js</code>.</p>
   </div>
 
+  <div class="toolbar" id="toolbar" style="display:none">
+    <input type="checkbox" class="collection-checkbox" id="cb-select-all" checked />
+    <span>Seleziona tutto</span>
+  </div>
+
   <div class="body" id="body">
     <div class="state-msg" id="loading">
       <span class="spinner"></span>
@@ -259,7 +298,7 @@
     <div style="display:flex;gap:8px;align-items:center;">
       <span class="progress" id="progress-msg"></span>
       <button class="btn btn-primary" id="btn-download-all" disabled>
-        ↓ Scarica tutti
+        ↓ Scarica selezione
       </button>
     </div>
   </div>
@@ -328,6 +367,21 @@
       document.getElementById('footer-info').textContent =
         `${collections.length} collection${collections.length !== 1 ? 's' : ''}, ${totalModes} file${totalModes !== 1 ? 's' : ''}`;
       document.getElementById('btn-download-all').disabled = false;
+
+      // Show and wire the global select-all checkbox
+      const toolbar = document.getElementById('toolbar');
+      toolbar.style.display = 'flex';
+      const cbAll = document.getElementById('cb-select-all');
+      cbAll.addEventListener('change', () => {
+        document.querySelectorAll('.collection .collection-checkbox').forEach((cb) => {
+          cb.checked = cbAll.checked;
+          cb.indeterminate = false;
+        });
+        document.querySelectorAll('.mode-checkbox').forEach((cb) => {
+          cb.checked = cbAll.checked;
+        });
+        updateDownloadAllButton();
+      });
     }
 
     function buildCollectionCard(col) {
@@ -347,7 +401,7 @@
 
       const colName = document.createElement('span');
       colName.className = 'collection-name';
-      colName.textContent = col.name;
+      colName.textContent = `${col.name} (${col.modes.length})`;
       header.appendChild(colName);
 
       const badge = document.createElement('span');
@@ -355,9 +409,18 @@
       badge.textContent = `${col.variableCount} variabili`;
       header.appendChild(badge);
 
+      const caretBtn = document.createElement('button');
+      caretBtn.className = 'caret-btn';
+      caretBtn.title = 'Espandi / Comprimi';
+      caretBtn.textContent = '▼';
+      header.appendChild(caretBtn);
+
       card.appendChild(header);
 
-      // ── Mode rows ─────────────────────────────────────────
+      // ── Mode rows (collapsible body) ───────────────────────
+      const collectionBody = document.createElement('div');
+      collectionBody.className = 'collection-body';
+
       for (const mode of col.modes) {
         const suggested = suggestFilename(col.name, mode.name, col.modes.length);
 
@@ -393,8 +456,16 @@
         });
         row.appendChild(exportBtn);
 
-        card.appendChild(row);
+        collectionBody.appendChild(row);
       }
+
+      card.appendChild(collectionBody);
+
+      // ── Caret wiring ──────────────────────────────────────
+      caretBtn.addEventListener('click', () => {
+        const collapsed = card.classList.toggle('collapsed');
+        collectionBody.classList.toggle('hidden', collapsed);
+      });
 
       // ── Checkbox wiring ───────────────────────────────────
       // Collection → all modes
@@ -442,6 +513,22 @@
     function updateDownloadAllButton() {
       const anyChecked = document.querySelectorAll('.mode-checkbox:checked').length > 0;
       document.getElementById('btn-download-all').disabled = !anyChecked;
+      updateSelectAllCheckbox();
+    }
+
+    /** Sync the global select-all checkbox with all mode checkboxes. */
+    function updateSelectAllCheckbox() {
+      const cbAll = document.getElementById('cb-select-all');
+      if (!cbAll) return;
+      const modeCbs = [...document.querySelectorAll('.mode-checkbox')];
+      const checked = modeCbs.filter((cb) => cb.checked).length;
+      if (checked === 0) {
+        cbAll.checked = false; cbAll.indeterminate = false;
+      } else if (checked === modeCbs.length) {
+        cbAll.checked = true; cbAll.indeterminate = false;
+      } else {
+        cbAll.checked = false; cbAll.indeterminate = true;
+      }
     }
 
     // ── Filename suggestion ────────────────────────────────────────────────────
