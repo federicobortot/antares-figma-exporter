@@ -191,23 +191,21 @@
       color: #555;
     }
 
-    /* ── Caret ───────────────────────────────────────────── */
-    .caret-btn {
+    /* ── Chevron ──────────────────────────────────────────── */
+    .chevron-btn {
       background: none;
       border: none;
       cursor: pointer;
-      padding: 0 3px;
+      padding: 0 2px;
       color: #888;
-      font-size: 10px;
-      line-height: 1;
-      transition: transform 0.15s;
+      line-height: 0;
       flex-shrink: 0;
+      display: flex;
+      align-items: center;
     }
+    .chevron-btn:hover { color: #444; }
     .collection.collapsed > .collection-header {
       border-bottom: none;
-    }
-    .collection.collapsed .caret-btn {
-      transform: rotate(-90deg);
     }
     .collection-body.hidden {
       display: none;
@@ -410,9 +408,9 @@
       header.appendChild(badge);
 
       const caretBtn = document.createElement('button');
-      caretBtn.className = 'caret-btn';
+      caretBtn.className = 'chevron-btn';
       caretBtn.title = 'Espandi / Comprimi';
-      caretBtn.textContent = '▼';
+      caretBtn.innerHTML = chevronSvg('up');
       header.appendChild(caretBtn);
 
       card.appendChild(header);
@@ -465,6 +463,7 @@
       caretBtn.addEventListener('click', () => {
         const collapsed = card.classList.toggle('collapsed');
         collectionBody.classList.toggle('hidden', collapsed);
+        caretBtn.innerHTML = chevronSvg(collapsed ? 'down' : 'up');
       });
 
       // ── Checkbox wiring ───────────────────────────────────
@@ -792,6 +791,15 @@
     }
 
     // ── Utility ────────────────────────────────────────────────────────────────
+
+    function chevronSvg(direction) {
+      const points = direction === 'up'
+        ? '4 9 8 5 12 9'
+        : '4 7 8 11 12 7';
+      return `<svg width="14" height="14" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polyline points="${points}" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+    }
 
     function escHtml(str) {
       return String(str)
