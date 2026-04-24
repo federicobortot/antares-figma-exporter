@@ -11,7 +11,7 @@ Plugin Figma per esportare le **Local Variable Collections** come file JSON comp
 - Genera automaticamente un nome file suggerito per ogni modo (es. `primitives.json`, `mode.light.json`)
 - Permette di esportare un singolo modo come file `.json`
 - Permette di esportare tutti i modi in un unico archivio `.zip` con data nel nome
-- Risolve i riferimenti alias tra variabili, anche tra collezioni diverse
+- Risolve i riferimenti alias tra variabili, anche tra collezioni diverse (incluse librerie esterne pubblicate)
 - Non richiede dipendenze esterne
 
 ---
