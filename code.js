@@ -124,7 +124,16 @@ async function buildJson(collectionId, modeId) {
     if (isVariableAlias(rawValue)) {
       // Alias → emit a {dot.separated.path} reference pointing to the
       // referenced variable's full name (with / → .)
-      const refVar = variableMap.get(rawValue.id);
+      // First try the local map; fall back to getVariableByIdAsync which also
+      // resolves variables from external/library collections.
+      let refVar = variableMap.get(rawValue.id);
+      if (!refVar) {
+        try {
+          refVar = await figma.variables.getVariableByIdAsync(rawValue.id);
+        } catch (_) {
+          refVar = null;
+        }
+      }
       $value = refVar
         ? `{${refVar.name.replace(/\//g, '.')}}`
         : `{unknown}`;
