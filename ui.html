@@ -539,7 +539,7 @@
      */
     function suggestFilename(colName, modeName, modeCount) {
       const normalize = (s) =>
-        s.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        s.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9.-]/g, '');
 
       const col  = normalize(colName);
       const mode = normalize(modeName);
