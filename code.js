@@ -121,27 +121,30 @@ async function buildJson(collectionId, modeId) {
     const $type = resolvedTypeToTokenType(variable.resolvedType);
 
     let $value;
+    let $extensions;
+    const composeParts = getComposeColorParts(rawValue);
     if (isVariableAlias(rawValue)) {
       // Alias → emit a {dot.separated.path} reference pointing to the
       // referenced variable's full name (with / → .)
-      // First try the local map; fall back to getVariableByIdAsync which also
-      // resolves variables from external/library collections.
-      let refVar = variableMap.get(rawValue.id);
-      if (!refVar) {
-        try {
-          refVar = await figma.variables.getVariableByIdAsync(rawValue.id);
-        } catch (_) {
-          refVar = null;
-        }
-      }
-      $value = refVar
-        ? `{${refVar.name.replace(/\//g, '.')}}`
-        : `{unknown}`;
+      $value = await formatAlias(rawValue, variableMap);
+    } else if (composeParts) {
+      // Alias with its own opacity (COMPOSE_COLOR) → keep the color reference
+      // in $value and carry the opacity (0–1 number or {reference}) in
+      // $extensions, since DTCG has no syntax for "alias + alpha".
+      $value = isVariableAlias(composeParts.color)
+        ? await formatAlias(composeParts.color, variableMap)
+        : formatValue('COLOR', composeParts.color);
+      const opacity = isVariableAlias(composeParts.opacity)
+        ? await formatAlias(composeParts.opacity, variableMap)
+        : normalizeOpacity(composeParts.opacity);
+      if (opacity !== null) $extensions = { opacity };
     } else {
       $value = formatValue(variable.resolvedType, rawValue);
     }
 
-    setNestedValue(result, path, { $type, $value });
+    const token = { $type, $value };
+    if ($extensions) token.$extensions = $extensions;
+    setNestedValue(result, path, token);
   }
 
   return result;
@@ -157,6 +160,65 @@ function isVariableAlias(raw) {
     !('r' in raw) && // exclude COLOR objects { r, g, b, a }
     raw.type === 'VARIABLE_ALIAS'
   );
+}
+
+/**
+ * Look up a variable by id: first the local map, then getVariableByIdAsync,
+ * which also resolves variables from external/library collections.
+ */
+async function getVariable(id, variableMap) {
+  const local = variableMap.get(id);
+  if (local) return local;
+  try {
+    return await figma.variables.getVariableByIdAsync(id);
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Detect an "alias + own opacity" color value and return its { color, opacity }
+ * operands, or null. Figma exposes it either as a COMPOSE_COLOR expression or
+ * as a plain { color, opacity } object.
+ */
+function getComposeColorParts(raw) {
+  if (raw === null || typeof raw !== 'object') return null;
+  if (
+    raw.type === 'VARIABLE_EXPRESSION' &&
+    raw.expressionFunction === 'COMPOSE_COLOR'
+  ) {
+    const [color, opacity] = (raw.expressionArguments || []).map(unwrapVariableData);
+    return { color, opacity };
+  }
+  if ('color' in raw && 'opacity' in raw && !('r' in raw)) {
+    return { color: raw.color, opacity: raw.opacity };
+  }
+  return null;
+}
+
+/** Expression arguments may be wrapped as VariableData { resolvedType, value } */
+function unwrapVariableData(arg) {
+  if (
+    arg !== null &&
+    typeof arg === 'object' &&
+    arg.type !== 'VARIABLE_ALIAS' &&
+    'value' in arg
+  ) {
+    return arg.value;
+  }
+  return arg;
+}
+
+/** Format an alias as a {dot.separated.path} reference */
+async function formatAlias(alias, variableMap) {
+  const refVar = await getVariable(alias.id, variableMap);
+  return refVar ? `{${refVar.name.replace(/\//g, '.')}}` : `{unknown}`;
+}
+
+/** Figma opacity is a percentage (0–100); output 0–1, accepting 0–1 as well */
+function normalizeOpacity(opacity) {
+  if (typeof opacity !== 'number' || Number.isNaN(opacity)) return null;
+  return parseFloat((opacity > 1 ? opacity / 100 : opacity).toFixed(4));
 }
 
 /** Map Figma resolvedType to W3C Design Token type string */
@@ -179,7 +241,7 @@ function formatValue(resolvedType, raw) {
     const r = Math.round(raw.r * 255);
     const g = Math.round(raw.g * 255);
     const b = Math.round(raw.b * 255);
-    const a = raw.a;
+    const a = typeof raw.a === 'number' ? raw.a : 1;
 
     if (a < 1) {
       // Round alpha to 4 decimal places, matching the pattern in primitives.json
