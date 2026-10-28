@@ -215,10 +215,10 @@ async function formatAlias(alias, variableMap) {
   return refVar ? `{${refVar.name.replace(/\//g, '.')}}` : `{unknown}`;
 }
 
-/** Figma opacity is a percentage (0–100); output 0–1, accepting 0–1 as well */
+/** Figma stores alias opacity as a percentage (0–100); output 0–1 */
 function normalizeOpacity(opacity) {
   if (typeof opacity !== 'number' || Number.isNaN(opacity)) return null;
-  return parseFloat((opacity > 1 ? opacity / 100 : opacity).toFixed(4));
+  return parseFloat((opacity / 100).toFixed(4));
 }
 
 /** Map Figma resolvedType to W3C Design Token type string */
@@ -238,6 +238,9 @@ function resolvedTypeToTokenType(resolvedType) {
  */
 function formatValue(resolvedType, raw) {
   if (resolvedType === 'COLOR') {
+    if (!raw || typeof raw.r !== 'number') {
+      console.warn('[Antares] Unrecognized color value:', JSON.stringify(raw));
+    }
     const r = Math.round(raw.r * 255);
     const g = Math.round(raw.g * 255);
     const b = Math.round(raw.b * 255);
