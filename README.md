@@ -8,7 +8,7 @@ Plugin Figma per esportare le **Local Variable Collections** come file JSON comp
 
 - Legge tutte le collezioni di variabili locali presenti nel file Figma aperto
 - Mostra ogni collezione con il numero di variabili e la lista dei modi (mode)
-- Genera automaticamente un nome file suggerito per ogni modo (es. `primitives.json`, `mode.light.json`)
+- Genera automaticamente un nome file suggerito per ogni modo (es. `primitives.json`, `mode.light.json`); il punto iniziale delle collezioni nascoste (es. `.generosity`) viene rimosso, così il file non risulta nascosto su macOS
 - Permette di esportare un singolo modo come file `.json`
 - Permette di esportare tutti i modi in un unico archivio `.zip` con data nel nome
 - Risolve i riferimenti alias tra variabili, anche tra collezioni diverse (incluse librerie esterne pubblicate)

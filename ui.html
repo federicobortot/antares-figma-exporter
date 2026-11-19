@@ -536,12 +536,14 @@
      * Propose a filename from the collection + mode names.
      * If the collection has a single mode → "collection.json"
      * If the collection has multiple modes → "collection.mode.json"
+     * Leading dots are dropped (".generosity" → "generosity.json"), otherwise
+     * the exported file would be hidden on macOS/Linux.
      */
     function suggestFilename(colName, modeName, modeCount) {
       const normalize = (s) =>
         s.trim().replace(/\s+/g, '-').replace(/[^a-zA-Z0-9.-]/g, '');
 
-      const col  = normalize(colName);
+      const col  = normalize(colName).replace(/^\.+/, '') || 'collection';
       const mode = normalize(modeName);
 
       if (modeCount === 1) {
